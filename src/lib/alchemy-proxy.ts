@@ -1,7 +1,7 @@
 /**
  * Helper function to call Alchemy API through the serverless proxy
  */
-async function callAlchemy(method: string, params: any[] = []) {
+async function callAlchemy(method: string, params: unknown[] = []) {
   const response = await fetch('/api/alchemy', {
     method: 'POST',
     headers: {
@@ -40,7 +40,7 @@ export const alchemyProxy = {
     toAddress?: string;
     category?: string[];
   }) {
-    const params: any = {};
+    const params: Record<string, unknown> = {};
     if (options.fromBlock) params.fromBlock = options.fromBlock;
     if (options.toBlock) params.toBlock = options.toBlock;
     if (options.fromAddress) params.fromAddress = options.fromAddress;

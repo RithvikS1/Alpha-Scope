@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
-import { formatEther, formatUSD, formatTimeAgo } from "@/lib/utils"
+import { formatEther, formatTimeAgo } from "@/lib/utils"
 import { alchemyProxy } from "@/lib/alchemy-proxy"
 import { Connection, PublicKey } from "@solana/web3.js"
 import { useState } from "react"
@@ -14,7 +14,18 @@ const solanaConnection = new Connection(
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
 )
 
-async function generateTradingStrategy(transactions: any[], chain: "ethereum" | "solana"): Promise<string> {
+interface TransferTransaction {
+  value?: string | number;
+  asset?: string;
+  blockTime?: Date | string | number;
+  metadata?: {
+    blockTimestamp?: string | number | Date;
+  };
+  timestamp?: Date | string | number;
+  amount?: string | number;
+}
+
+async function generateTradingStrategy(transactions: TransferTransaction[], chain: "ethereum" | "solana"): Promise<string> {
   const response = await fetch("/api/generate-strategy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -112,7 +123,7 @@ export function WalletAnalysis({ address, chain }: WalletAnalysisProps) {
       <div className="space-y-2">
         <h3 className="text-xl font-semibold">Recent Transfers</h3>
         <div className="space-y-2">
-          {walletData.transfers.slice(0, 5).map((transfer: any, index: number) => (
+          {walletData.transfers.slice(0, 5).map((transfer: TransferTransaction, index: number) => (
             <div key={index} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
               <div>
                 <span className="text-sm font-medium">

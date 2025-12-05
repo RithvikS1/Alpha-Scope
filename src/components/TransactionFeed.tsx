@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react"
-import { useQuery } from "@tanstack/react-query"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { formatEther, formatTimeAgo, shortenAddress, getTransactionLabel } from "@/lib/utils"
 import { Button } from "@/components/ui/button"

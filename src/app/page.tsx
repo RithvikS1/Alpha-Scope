@@ -1,16 +1,12 @@
 'use client'
 
 import { TransactionFeed } from "@/components/TransactionFeed"
-import { WalletAnalysis } from "@/components/WalletAnalysis"
 import { ChainSelector } from "@/components/ChainSelector"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { useState } from "react"
-import { type ChainType } from "@/config/chains"
 
 const queryClient = new QueryClient()
 
 export default function Home() {
-  const [selectedChain, setSelectedChain] = useState<ChainType>("ethereum")
 
   return (
     <QueryClientProvider client={queryClient}>

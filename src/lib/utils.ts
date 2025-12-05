@@ -13,7 +13,7 @@ export function formatTimeAgo(date: Date | number | string | undefined) {
     const dateObj = date instanceof Date ? date : new Date(date)
     if (isNaN(dateObj.getTime())) return "Invalid date"
     return formatDistanceToNow(dateObj, { addSuffix: true })
-  } catch (error) {
+  } catch {
     return "Invalid date"
   }
 }

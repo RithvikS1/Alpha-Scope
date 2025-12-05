@@ -5,7 +5,14 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-function analyzeTradingPattern(transactions: any[]) {
+interface Transaction {
+  value: string | number;
+  metadata?: {
+    blockTimestamp?: string | number | Date;
+  };
+}
+
+function analyzeTradingPattern(transactions: Transaction[]) {
   const volumes = transactions.map(tx => parseFloat(tx.value))
   const timestamps = transactions.map(tx => new Date(tx.metadata.blockTimestamp))
   
