@@ -1,6 +1,6 @@
 # Alpha Scope - Real-time Ethereum Order Book Dashboard
 
-Alpha Scope is a sophisticated crypto order book dashboard that provides real-time insights into Ethereum transactions using Alchemy's WebSocket API. The application offers detailed transaction analysis, wallet profiling, and AI-powered trading behavior analysis.
+Alpha Scope is a sophisticated crypto order book dashboard that provides real-time insights into Ethereum transactions using Alchemy's WebSocket API. The application offers detailed transaction analysis and wallet profiling.
 
 ## Features
 
@@ -8,8 +8,6 @@ Alpha Scope is a sophisticated crypto order book dashboard that provides real-ti
 - 🏷️ Automatic transaction labeling with intuitive emojis
 - 📊 Detailed transaction analysis including price impact and slippage
 - 👛 Wallet profiling with historical trading behavior
-- 🤖 AI-powered trading strategy analysis
-- 📈 PineScript strategy generation for TradingView
 - 🔍 Advanced wallet tracking and analysis
 
 ## Tech Stack
@@ -18,7 +16,6 @@ Alpha Scope is a sophisticated crypto order book dashboard that provides real-ti
 - **Backend**: Next.js API Routes, WebSocket
 - **Database**: PostgreSQL with Prisma
 - **Blockchain**: Alchemy SDK, ethers.js
-- **AI**: OpenAI API
 - **State Management**: TanStack Query
 - **Forms**: React Hook Form, Zod
 
@@ -48,8 +45,7 @@ Alpha Scope is a sophisticated crypto order book dashboard that provides real-ti
 Create a `.env.local` file with the following variables:
 
 ```env
-ALCHEMY_API_KEY=your_alchemy_api_key
-OPENAI_API_KEY=your_openai_api_key
+ALCHEMY_KEY=your_alchemy_api_key
 DATABASE_URL=your_postgresql_url
 ```
 

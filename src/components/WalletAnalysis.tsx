@@ -1,9 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
-import { Button } from "@/components/ui/button"
 import { formatEther, formatTimeAgo } from "@/lib/utils"
 import { alchemyProxy } from "@/lib/alchemy-proxy"
 import { Connection, PublicKey } from "@solana/web3.js"
-import { useState } from "react"
 
 interface WalletAnalysisProps {
   address: string
@@ -25,18 +23,7 @@ interface TransferTransaction {
   amount?: string | number;
 }
 
-async function generateTradingStrategy(transactions: TransferTransaction[], chain: "ethereum" | "solana"): Promise<string> {
-  const response = await fetch("/api/generate-strategy", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ transactions, chain }),
-  })
-  const data = await response.json()
-  return data.strategy
-}
-
 export function WalletAnalysis({ address, chain }: WalletAnalysisProps) {
-  const [showStrategy, setShowStrategy] = useState(false)
 
   const { data: walletData, isLoading: isLoadingWallet } = useQuery({
     queryKey: ["wallet", address, chain],
@@ -88,12 +75,6 @@ export function WalletAnalysis({ address, chain }: WalletAnalysisProps) {
     },
   })
 
-  const { data: strategy, isLoading: isLoadingStrategy } = useQuery({
-    queryKey: ["strategy", address, chain],
-    queryFn: () => generateTradingStrategy(walletData?.transfers || [], chain),
-    enabled: !!walletData && showStrategy,
-  })
-
   if (isLoadingWallet) {
     return <div className="p-4">Loading wallet data...</div>
   }
@@ -139,25 +120,6 @@ export function WalletAnalysis({ address, chain }: WalletAnalysisProps) {
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="space-y-4">
-        <Button
-          onClick={() => setShowStrategy(true)}
-          disabled={isLoadingStrategy}
-          className="w-full"
-        >
-          {isLoadingStrategy ? "Generating Strategy..." : "Generate Trading Strategy"}
-        </Button>
-
-        {strategy && (
-          <div className="space-y-2">
-            <h3 className="text-xl font-semibold">Trading Strategy</h3>
-            <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-x-auto">
-              <code>{strategy}</code>
-            </pre>
-          </div>
-        )}
       </div>
     </div>
   )
