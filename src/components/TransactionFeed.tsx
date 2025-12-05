@@ -52,7 +52,8 @@ export function TransactionFeed() {
         alchemyProxy.getTransactionReceipt(txHash)
       ])
 
-      if (!tx || !receipt || receipt.status !== 1) return
+      // Only require transaction and receipt - show all transactions including failed ones
+      if (!tx || !receipt) return
 
       const methodName = tx.data && tx.data !== "0x" ? tx.data.slice(0, 10) : null
       const slippage = receipt.effectiveGasPrice && tx.gasPrice ?
@@ -118,6 +119,43 @@ export function TransactionFeed() {
         const currentBlockNumber = typeof latestBlock.number === 'string' 
           ? parseInt(latestBlock.number, 16) 
           : Number(latestBlock.number)
+
+        // On first poll, process the current block and a few recent blocks to populate feed
+        if (lastBlockNumber === null) {
+          // Process current block and last 2 blocks to populate feed initially
+          const blocksToProcess = [currentBlockNumber, currentBlockNumber - 1, currentBlockNumber - 2]
+          
+          for (const blockNum of blocksToProcess) {
+            if (blockNum < 0) continue
+            if (!isSubscribed || isPaused || !isPageVisible) break
+
+            try {
+              const block = await alchemyProxy.getBlock(blockNum, false)
+              if (!block || !block.transactions || block.transactions.length === 0) continue
+
+              // Process transactions in small batches for smooth updates
+              const txBatches: string[][] = []
+              for (let i = 0; i < block.transactions.length; i += MAX_CONCURRENT_PROCESSING) {
+                txBatches.push(block.transactions.slice(i, i + MAX_CONCURRENT_PROCESSING))
+              }
+
+              for (const batch of txBatches) {
+                if (!isSubscribed || isPaused || !isPageVisible) break
+                await Promise.all(batch.map((txHash: string) => processTransaction(txHash)))
+                // Small delay between batches for smooth UI updates
+                if (isSubscribed && !isPaused && isPageVisible) {
+                  await new Promise(resolve => setTimeout(resolve, 100))
+                }
+              }
+            } catch (error) {
+              console.error(`Error processing block ${blockNum}:`, error)
+            }
+          }
+          
+          lastBlockNumber = currentBlockNumber
+          if (isLoading) setIsLoading(false)
+          return
+        }
 
         // If we have a last block number, process all blocks since then
         if (lastBlockNumber !== null && currentBlockNumber > lastBlockNumber) {
