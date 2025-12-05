@@ -1,0 +1,60 @@
+// This is your Prisma schema file
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Transaction {
+  id                String   @id @default(cuid())
+  hash              String   @unique
+  blockNumber       Int?
+  from              String
+  to                String
+  value             String   // in Wei/Lamports
+  valueUSD          Float?
+  gasFee            String   // in Wei/Lamports
+  timestamp         DateTime
+  tokenAddress      String?
+  tokenSymbol       String?
+  methodName        String?
+  slippage          Float?
+  priceImpact       Float?
+  label             String?
+  protocolUsed      String?
+  walletBalancePre  String?  // in Wei/Lamports
+  walletBalancePost String?  // in Wei/Lamports
+  isConfirmed       Boolean  @default(false)
+  chain             String   // "ethereum" or "solana"
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  wallet            Wallet   @relation(fields: [from], references: [address])
+}
+
+model Wallet {
+  id                String        @id @default(cuid())
+  address           String        @unique
+  label             String?
+  chain             String        // "ethereum" or "solana"
+  transactions      Transaction[]
+  tradingBehavior   String?       // AI-generated trading behavior summary
+  pineScriptStrategy String?      // Generated PineScript strategy
+  lastAnalyzed      DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model WalletLabel {
+  id          String   @id @default(cuid())
+  address     String   @unique
+  label       String
+  confidence  Float
+  source      String   // e.g., "manual", "ai", "community"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+} 

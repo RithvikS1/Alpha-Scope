@@ -1,0 +1,46 @@
+{
+  "name": "alpha-scope",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.8.2",
+    "@radix-ui/react-dialog": "^1.1.13",
+    "@radix-ui/react-dropdown-menu": "^2.1.14",
+    "@radix-ui/react-slot": "^1.2.2",
+    "@solana/web3.js": "^1.98.2",
+    "@tanstack/react-query": "^5.76.1",
+    "@tanstack/react-virtual": "^3.13.8",
+    "@tanstack/virtual-core": "^3.13.8",
+    "alchemy-sdk": "^3.5.9",
+    "class-variance-authority": "^0.7.1",
+    "date-fns": "^4.1.0",
+    "ethers": "^6.14.1",
+    "lucide-react": "^0.511.0",
+    "next": "^15.5.7",
+    "openai": "^4.100.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "rpc-websockets": "^9.1.1",
+    "tailwind-merge": "^3.3.0",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.2",
+    "prisma": "^6.8.2",
+    "tailwindcss": "^4",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5"
+  }
+}
