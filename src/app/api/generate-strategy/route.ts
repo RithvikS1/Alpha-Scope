@@ -13,24 +13,47 @@ interface Transaction {
 }
 
 function analyzeTradingPattern(transactions: Transaction[]) {
-  const volumes = transactions.map(tx => parseFloat(tx.value))
-  const timestamps = transactions.map(tx => new Date(tx.metadata.blockTimestamp))
+  const volumes = transactions.map(tx => {
+    const valueStr = typeof tx.value === 'string' ? tx.value : String(tx.value);
+    return parseFloat(valueStr) || 0;
+  });
+  const timestamps = transactions
+    .map(tx => {
+      if (!tx.metadata?.blockTimestamp) return new Date();
+      return new Date(tx.metadata.blockTimestamp);
+    })
+    .filter(date => !isNaN(date.getTime()));
   
   // Calculate basic statistics
-  const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length
-  const maxVolume = Math.max(...volumes)
-  const minVolume = Math.min(...volumes)
+  if (volumes.length === 0) {
+    return {
+      avgVolume: 0,
+      maxVolume: 0,
+      minVolume: 0,
+      mostActiveHour: 0,
+      buyingDips: false,
+    };
+  }
+  const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length;
+  const maxVolume = Math.max(...volumes);
+  const minVolume = Math.min(...volumes);
   
   // Analyze time patterns
-  const hourCounts = new Array(24).fill(0)
+  const hourCounts = new Array(24).fill(0);
   timestamps.forEach(time => {
-    hourCounts[time.getHours()]++
-  })
-  const mostActiveHour = hourCounts.indexOf(Math.max(...hourCounts))
+    hourCounts[time.getHours()]++;
+  });
+  const mostActiveHour = timestamps.length > 0 
+    ? hourCounts.indexOf(Math.max(...hourCounts))
+    : 0;
   
   // Analyze volume patterns
-  const volumeIncreases = volumes.slice(1).map((vol, i) => vol > volumes[i])
-  const buyingDips = volumeIncreases.filter(v => v).length / volumeIncreases.length > 0.6
+  const volumeIncreases = volumes.length > 1
+    ? volumes.slice(1).map((vol, i) => vol > volumes[i])
+    : [];
+  const buyingDips = volumeIncreases.length > 0
+    ? volumeIncreases.filter(v => v).length / volumeIncreases.length > 0.6
+    : false;
   
   return {
     avgVolume,
