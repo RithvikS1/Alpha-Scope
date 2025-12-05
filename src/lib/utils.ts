@@ -22,7 +22,7 @@ export function shortenAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`
 }
 
-export function formatEther(wei: string | ethers.BigNumber) {
+export function formatEther(wei: string | bigint) {
   try {
     const weiString = typeof wei === 'string' ? wei : wei.toString()
     return parseFloat(ethers.formatEther(weiString)).toFixed(4)

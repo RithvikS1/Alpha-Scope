@@ -3,7 +3,6 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { formatEther, formatTimeAgo, shortenAddress, getTransactionLabel } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { alchemyProxy } from "@/lib/alchemy-proxy"
-import { Alchemy, Network, WebsocketProvider } from "alchemy-sdk"
 import { Play, Pause } from "lucide-react"
 
 interface Transaction {
@@ -22,13 +21,6 @@ interface Transaction {
   priceImpact: number | null
   label: string | null
 }
-
-const ethConfig = {
-  apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY,
-  network: process.env.NEXT_PUBLIC_ALCHEMY_NETWORK as Network,
-}
-
-const ethAlchemy = new Alchemy(ethConfig)
 
 const TRANSACTIONS_PER_PAGE = 100
 const MAX_CONCURRENT_PROCESSING = 5 // Process 5 transactions at a time for smooth updates
@@ -95,35 +87,68 @@ export function TransactionFeed() {
   }
 
   useEffect(() => {
-    const ws = ethAlchemy.ws as WebsocketProvider
-    let isSubscribed = true
+    if (isPaused) return
 
-    ws.on("block", async (blockNumber) => {
+    let isSubscribed = true
+    let lastBlockNumber: number | null = null
+    let pollInterval: NodeJS.Timeout | null = null
+
+    const pollForNewBlocks = async () => {
       if (!isSubscribed || isPaused) return
 
       try {
-        const block = await alchemyProxy.getBlock(blockNumber, false)
-        if (!block || !block.transactions) return
+        // Get the latest block number
+        const latestBlock = await alchemyProxy.getBlock("latest", false)
+        if (!latestBlock || !latestBlock.number) return
 
-        // Process transactions in small batches for smooth updates
-        const txBatches = []
-        for (let i = 0; i < block.transactions.length; i += MAX_CONCURRENT_PROCESSING) {
-          txBatches.push(block.transactions.slice(i, i + MAX_CONCURRENT_PROCESSING))
+        const currentBlockNumber = typeof latestBlock.number === 'string' 
+          ? parseInt(latestBlock.number, 16) 
+          : Number(latestBlock.number)
+
+        // If we have a last block number, process all blocks since then
+        if (lastBlockNumber !== null && currentBlockNumber > lastBlockNumber) {
+          for (let blockNum = lastBlockNumber + 1; blockNum <= currentBlockNumber; blockNum++) {
+            if (!isSubscribed || isPaused) break
+
+            try {
+              const block = await alchemyProxy.getBlock(blockNum, false)
+              if (!block || !block.transactions) continue
+
+              // Process transactions in small batches for smooth updates
+              const txBatches: string[][] = []
+              for (let i = 0; i < block.transactions.length; i += MAX_CONCURRENT_PROCESSING) {
+                txBatches.push(block.transactions.slice(i, i + MAX_CONCURRENT_PROCESSING))
+              }
+
+              for (const batch of txBatches) {
+                if (!isSubscribed || isPaused) break
+                await Promise.all(batch.map((txHash: string) => processTransaction(txHash)))
+                // Small delay between batches for smooth UI updates
+                if (isSubscribed && !isPaused) await new Promise(resolve => setTimeout(resolve, 100))
+              }
+            } catch (error) {
+              console.error(`Error processing block ${blockNum}:`, error)
+            }
+          }
         }
 
-        for (const batch of txBatches) {
-          await Promise.all(batch.map(txHash => processTransaction(txHash)))
-          // Small delay between batches for smooth UI updates
-          if (isSubscribed && !isPaused) await new Promise(resolve => setTimeout(resolve, 100))
-        }
+        lastBlockNumber = currentBlockNumber
       } catch (error) {
-        console.error("Error processing block:", error)
+        console.error("Error polling for blocks:", error)
       }
-    })
+    }
+
+    // Initial poll to get current block
+    pollForNewBlocks()
+
+    // Poll every 2 seconds for new blocks
+    pollInterval = setInterval(pollForNewBlocks, 2000)
 
     return () => {
       isSubscribed = false
-      ws.removeAllListeners()
+      if (pollInterval) {
+        clearInterval(pollInterval)
+      }
     }
   }, [isPaused])
 

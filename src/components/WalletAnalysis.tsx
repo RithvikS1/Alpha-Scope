@@ -81,7 +81,7 @@ export function WalletAnalysis({ address, chain }: WalletAnalysisProps) {
             blockTime: tx?.blockTime ? new Date(tx.blockTime * 1000) : new Date(),
             from: tx?.transaction.message.accountKeys[0].pubkey.toString(),
             to: tx?.transaction.message.accountKeys[1].pubkey.toString(),
-            amount: tx?.meta?.postBalances[0] - tx?.meta?.preBalances[0],
+            amount: (tx?.meta?.postBalances?.[0] ?? 0) - (tx?.meta?.preBalances?.[0] ?? 0),
           })),
         }
       }
