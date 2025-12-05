@@ -30,6 +30,8 @@ export function TransactionFeed() {
   const [selectedTx, setSelectedTx] = useState<string | null>(null)
   const [isPaused, setIsPaused] = useState(false)
   const [pausedTransactions, setPausedTransactions] = useState<Transaction[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const parentRef = useRef<HTMLDivElement>(null)
   const processingTxs = useRef<Set<string>>(new Set())
 
@@ -92,14 +94,26 @@ export function TransactionFeed() {
     let isSubscribed = true
     let lastBlockNumber: number | null = null
     let pollInterval: NodeJS.Timeout | null = null
+    let isPageVisible = true
+
+    // Stop polling when page is hidden (tab switched, minimized, etc.)
+    const handleVisibilityChange = () => {
+      isPageVisible = !document.hidden
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     const pollForNewBlocks = async () => {
-      if (!isSubscribed || isPaused) return
+      // Stop polling if page is not visible or component is unmounted/paused
+      if (!isSubscribed || isPaused || !isPageVisible) return
 
       try {
+        setError(null)
         // Get the latest block number
         const latestBlock = await alchemyProxy.getBlock("latest", false)
-        if (!latestBlock || !latestBlock.number) return
+        if (!latestBlock || !latestBlock.number) {
+          if (isLoading) setIsLoading(false)
+          return
+        }
 
         const currentBlockNumber = typeof latestBlock.number === 'string' 
           ? parseInt(latestBlock.number, 16) 
@@ -108,7 +122,7 @@ export function TransactionFeed() {
         // If we have a last block number, process all blocks since then
         if (lastBlockNumber !== null && currentBlockNumber > lastBlockNumber) {
           for (let blockNum = lastBlockNumber + 1; blockNum <= currentBlockNumber; blockNum++) {
-            if (!isSubscribed || isPaused) break
+            if (!isSubscribed || isPaused || !isPageVisible) break
 
             try {
               const block = await alchemyProxy.getBlock(blockNum, false)
@@ -121,10 +135,12 @@ export function TransactionFeed() {
               }
 
               for (const batch of txBatches) {
-                if (!isSubscribed || isPaused) break
+                if (!isSubscribed || isPaused || !isPageVisible) break
                 await Promise.all(batch.map((txHash: string) => processTransaction(txHash)))
                 // Small delay between batches for smooth UI updates
-                if (isSubscribed && !isPaused) await new Promise(resolve => setTimeout(resolve, 100))
+                if (isSubscribed && !isPaused && isPageVisible) {
+                  await new Promise(resolve => setTimeout(resolve, 100))
+                }
               }
             } catch (error) {
               console.error(`Error processing block ${blockNum}:`, error)
@@ -133,24 +149,32 @@ export function TransactionFeed() {
         }
 
         lastBlockNumber = currentBlockNumber
+        if (isLoading) setIsLoading(false)
       } catch (error) {
         console.error("Error polling for blocks:", error)
+        setError(error instanceof Error ? error.message : "Failed to fetch blocks")
+        if (isLoading) setIsLoading(false)
       }
     }
 
     // Initial poll to get current block
     pollForNewBlocks()
 
-    // Poll every 2 seconds for new blocks
-    pollInterval = setInterval(pollForNewBlocks, 2000)
+    // Poll every 2 seconds for new blocks (only when page is visible)
+    pollInterval = setInterval(() => {
+      if (isPageVisible && !isPaused) {
+        pollForNewBlocks()
+      }
+    }, 2000)
 
     return () => {
       isSubscribed = false
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       if (pollInterval) {
         clearInterval(pollInterval)
       }
     }
-  }, [isPaused])
+  }, [isPaused, isLoading])
 
   const handlePauseToggle = () => {
     if (isPaused) {
@@ -196,51 +220,78 @@ export function TransactionFeed() {
 
       {/* Transaction List */}
       <div ref={parentRef} className="flex-1 overflow-y-auto p-4">
-        <div
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: '100%',
-            position: 'relative',
-          }}
-        >
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const tx = transactions[virtualRow.index]
-            return (
-              <div
-                key={tx.hash}
-                className={`absolute top-0 left-0 w-full ${
-                  selectedTx === tx.hash ? "border-2 border-blue-500" : ""
-                }`}
-                style={{
-                  height: `${virtualRow.size}px`,
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-              >
-                <div 
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 cursor-pointer transition-colors m-2"
-                  onClick={() => setSelectedTx(tx.hash)}
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
+            <p className="text-red-800 dark:text-red-200 text-sm">
+              Error: {error}
+            </p>
+          </div>
+        )}
+        {isLoading && transactions.length === 0 && (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-gray-100 mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-400">Loading transaction feed...</p>
+            </div>
+          </div>
+        )}
+        {!isLoading && transactions.length === 0 && !error && (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <p className="text-gray-600 dark:text-gray-400 text-lg mb-2">No transactions yet</p>
+              <p className="text-gray-500 dark:text-gray-500 text-sm">
+                Waiting for new blocks... The feed will update automatically.
+              </p>
+            </div>
+          </div>
+        )}
+        {transactions.length > 0 && (
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const tx = transactions[virtualRow.index]
+              return (
+                <div
+                  key={tx.hash}
+                  className={`absolute top-0 left-0 w-full ${
+                    selectedTx === tx.hash ? "border-2 border-blue-500" : ""
+                  }`}
+                  style={{
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-2xl">{tx.label}</span>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">
-                          {shortenAddress(tx.from)} → {shortenAddress(tx.to)}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {formatTimeAgo(tx.timestamp)}
-                        </span>
+                  <div 
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 cursor-pointer transition-colors m-2"
+                    onClick={() => setSelectedTx(tx.hash)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-2xl">{tx.label}</span>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">
+                            {shortenAddress(tx.from)} → {shortenAddress(tx.to)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {formatTimeAgo(tx.timestamp)}
+                          </span>
+                        </div>
                       </div>
+                      <span className="font-medium">
+                        {formatEther(tx.value)} ETH
+                      </span>
                     </div>
-                    <span className="font-medium">
-                      {formatEther(tx.value)} ETH
-                    </span>
                   </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Transaction Details Panel */}
